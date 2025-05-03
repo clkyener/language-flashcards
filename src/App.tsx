@@ -156,7 +156,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     return () => unsubscribe();
   }, [auth]);
 
-  const login = (email: string) => {
+  const login = () => {
     // This is now handled by Firebase auth state change
   };
 
@@ -1527,12 +1527,6 @@ function App({
     const calculateLevelAccuracy = (levelStats: { attempted: number; correct: number }) => {
       if (levelStats.attempted === 0) return 0;
       return Math.round((levelStats.correct / levelStats.attempted) * 100);
-    };
-
-    const handlePracticeFailedPhrases = (language: Language) => {
-      setSelectedLanguage(language);
-      setSelectedLevel(null); // Reset level selection
-      setShowStats(false);
     };
 
     const FailedPhrasesSection = ({ language }: { language: Language }) => {
