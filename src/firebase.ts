@@ -5,13 +5,13 @@ import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDrQ7ooaylbfsNQAq_uL76md5WQW5qxhVE",
-  authDomain: "language-flashcards-c0676.firebaseapp.com",
-  projectId: "language-flashcards-c0676",
-  storageBucket: "language-flashcards-c0676.firebasestorage.app",
-  messagingSenderId: "391869561092",
-  appId: "1:391869561092:web:b61e4817ce2a9735293851",
-  measurementId: "G-PWNSN5N2N9"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
