@@ -1,6 +1,6 @@
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Box, Container, Typography, Card, CardContent, TextField, Button, LinearProgress, Paper, FormControl, InputLabel, Select, MenuItem, Grid, Chip, Menu } from '@mui/material';
+import { Box, Container, Typography, Card, CardContent, TextField, Button, LinearProgress, Paper, FormControl, InputLabel, Select, MenuItem, Chip, Menu } from '@mui/material';
 import React from 'react';
 import { useFirebaseAuth } from './firebase';
 
@@ -1520,21 +1520,13 @@ function App({
     const [selectedStatsLanguage, setSelectedStatsLanguage] = useState<Language | null>(selectedLanguage);
 
     const calculateOverallAccuracy = (progress: UserProgress) => {
-      return progress.phrasesStudied > 0
-        ? Math.round((progress.correctAnswers / progress.phrasesStudied) * 100)
-        : 0;
+      if (progress.phrasesStudied === 0) return 0;
+      return Math.round((progress.correctAnswers / progress.phrasesStudied) * 100);
     };
 
     const calculateLevelAccuracy = (levelStats: { attempted: number; correct: number }) => {
-      return levelStats.attempted > 0
-        ? Math.round((levelStats.correct / levelStats.attempted) * 100)
-        : 0;
-    };
-
-    const getLastSevenDaysStats = (stats: ProgressStats[]) => {
-      const today = new Date();
-      const sevenDaysAgo = new Date(today.setDate(today.getDate() - 7));
-      return stats.filter(stat => new Date(stat.date) >= sevenDaysAgo);
+      if (levelStats.attempted === 0) return 0;
+      return Math.round((levelStats.correct / levelStats.attempted) * 100);
     };
 
     const handlePracticeFailedPhrases = (language: Language) => {
