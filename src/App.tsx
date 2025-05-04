@@ -2,7 +2,7 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Box, Container, Typography, Card, CardContent, TextField, Button, LinearProgress, Paper, FormControl, InputLabel, Select, MenuItem, Chip, Menu } from '@mui/material';
 import React from 'react';
-import { useFirebaseAuth } from './firebase';
+import { useFirebaseAuth, saveQuestionProgress, updateUserProgress } from './firebase';
 
 type ProficiencyLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 
@@ -87,87 +87,188 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(true);
 
-  const { auth, logoutUser } = useFirebaseAuth();
+  const { auth, logoutUser, getUserData } = useFirebaseAuth();
 
   // Listen for Firebase auth state changes
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      setDebugLogs(prev => [...prev, `Auth state changed: ${firebaseUser?.uid || 'null'}`]);
       if (firebaseUser) {
-        // Check if we already have user data
-        const savedUser = localStorage.getItem('user');
-        if (savedUser) {
-          const userData = JSON.parse(savedUser);
-          if (userData.email === firebaseUser.email) {
-            setUser(userData);
-            return;
-          }
-        }
-
-        // Create new user data if not exists
-        const newUser: User = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || 'anonymous',
-          createdAt: new Date().toISOString(),
-          settings: {
-            selectedLevel: 'A1' as ProficiencyLevel,
-            progress: {
-              Swedish: {
-                phrasesStudied: 0,
-                correctAnswers: 0,
-                lastStudyDate: new Date().toISOString(),
-                levelProgress: {
-                  'A1': { attempted: 0, correct: 0 },
-                  'A2': { attempted: 0, correct: 0 },
-                  'B1': { attempted: 0, correct: 0 },
-                  'B2': { attempted: 0, correct: 0 },
-                  'C1': { attempted: 0, correct: 0 },
-                  'C2': { attempted: 0, correct: 0 },
+        // Get user data from Firestore
+        const { data: userData, error } = await getUserData(firebaseUser.uid);
+        setDebugLogs(prev => [...prev, `Firestore user data: ${JSON.stringify(userData)}`]);
+        setDebugLogs(prev => [...prev, `Firestore error: ${error?.message || 'none'}`]);
+        
+        if (userData && !error) {
+          const userWithData = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            createdAt: userData.createdAt || new Date().toISOString(),
+            settings: userData.settings || {
+              selectedLevel: 'A1',
+              progress: {
+                Swedish: {
+                  phrasesStudied: 0,
+                  correctAnswers: 0,
+                  lastStudyDate: new Date().toISOString(),
+                  levelProgress: {
+                    'A1': { attempted: 0, correct: 0 },
+                    'A2': { attempted: 0, correct: 0 },
+                    'B1': { attempted: 0, correct: 0 },
+                    'B2': { attempted: 0, correct: 0 },
+                    'C1': { attempted: 0, correct: 0 },
+                    'C2': { attempted: 0, correct: 0 },
+                  },
+                  dailyStats: [],
+                  failedPhrases: [],
                 },
-                dailyStats: [],
-                failedPhrases: [],
-              },
-              German: {
-                phrasesStudied: 0,
-                correctAnswers: 0,
-                lastStudyDate: new Date().toISOString(),
-                levelProgress: {
-                  'A1': { attempted: 0, correct: 0 },
-                  'A2': { attempted: 0, correct: 0 },
-                  'B1': { attempted: 0, correct: 0 },
-                  'B2': { attempted: 0, correct: 0 },
-                  'C1': { attempted: 0, correct: 0 },
-                  'C2': { attempted: 0, correct: 0 },
+                German: {
+                  phrasesStudied: 0,
+                  correctAnswers: 0,
+                  lastStudyDate: new Date().toISOString(),
+                  levelProgress: {
+                    'A1': { attempted: 0, correct: 0 },
+                    'A2': { attempted: 0, correct: 0 },
+                    'B1': { attempted: 0, correct: 0 },
+                    'B2': { attempted: 0, correct: 0 },
+                    'C1': { attempted: 0, correct: 0 },
+                    'C2': { attempted: 0, correct: 0 },
+                  },
+                  dailyStats: [],
+                  failedPhrases: [],
                 },
-                dailyStats: [],
-                failedPhrases: [],
               },
             },
-          },
-        };
-        setUser(newUser);
-        localStorage.setItem('user', JSON.stringify(newUser));
+          };
+          setDebugLogs(prev => [...prev, `Setting user data: ${JSON.stringify(userWithData)}`]);
+          setUser(userWithData);
+          localStorage.setItem('user', JSON.stringify(userWithData));
+        } else {
+          setDebugLogs(prev => [...prev, 'No user data found in Firestore, creating new user']);
+          // Create new user data if not exists
+          const newUser: User = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            createdAt: new Date().toISOString(),
+            settings: {
+              selectedLevel: 'A1',
+              progress: {
+                Swedish: {
+                  phrasesStudied: 0,
+                  correctAnswers: 0,
+                  lastStudyDate: new Date().toISOString(),
+                  levelProgress: {
+                    'A1': { attempted: 0, correct: 0 },
+                    'A2': { attempted: 0, correct: 0 },
+                    'B1': { attempted: 0, correct: 0 },
+                    'B2': { attempted: 0, correct: 0 },
+                    'C1': { attempted: 0, correct: 0 },
+                    'C2': { attempted: 0, correct: 0 },
+                  },
+                  dailyStats: [],
+                  failedPhrases: [],
+                },
+                German: {
+                  phrasesStudied: 0,
+                  correctAnswers: 0,
+                  lastStudyDate: new Date().toISOString(),
+                  levelProgress: {
+                    'A1': { attempted: 0, correct: 0 },
+                    'A2': { attempted: 0, correct: 0 },
+                    'B1': { attempted: 0, correct: 0 },
+                    'B2': { attempted: 0, correct: 0 },
+                    'C1': { attempted: 0, correct: 0 },
+                    'C2': { attempted: 0, correct: 0 },
+                  },
+                  dailyStats: [],
+                  failedPhrases: [],
+                },
+              },
+            },
+          };
+          setUser(newUser);
+          localStorage.setItem('user', JSON.stringify(newUser));
+        }
       } else {
+        setDebugLogs(prev => [...prev, 'User logged out']);
         setUser(null);
         localStorage.removeItem('user');
       }
     });
 
     return () => unsubscribe();
-  }, [auth]);
+  }, [auth, getUserData]);
 
-  const login = () => {
-    // This is now handled by Firebase auth state change
+  const login = async (email: string) => {
+    // This will be handled by the Firebase auth state change
   };
 
   const logout = async () => {
     await logoutUser();
-    // The rest is handled by Firebase auth state change
+    setUser(null);
+    localStorage.removeItem('user');
   };
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>
       {children}
+      {/* Debug Panel Toggle Button */}
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() => setShowDebugPanel(!showDebugPanel)}
+        sx={{
+          position: 'fixed',
+          bottom: 20,
+          right: 20,
+          zIndex: 10000,
+        }}
+      >
+        {showDebugPanel ? 'Hide Debug' : 'Show Debug'}
+      </Button>
+
+      {/* Debug Panel */}
+      {showDebugPanel && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 70,
+            right: 20,
+            width: '400px',
+            height: '300px',
+            bgcolor: 'rgba(0,0,0,0.9)',
+            color: 'white',
+            overflow: 'auto',
+            padding: '15px',
+            fontSize: '12px',
+            zIndex: 9999,
+            borderRadius: '8px',
+            boxShadow: '0 0 10px rgba(0,0,0,0.5)',
+          }}
+        >
+          <Typography variant="h6" sx={{ color: 'white', mb: 2, borderBottom: '1px solid white', pb: 1 }}>
+            Debug Logs
+          </Typography>
+          {debugLogs.map((log, index) => (
+            <Typography 
+              key={index} 
+              sx={{ 
+                color: 'white', 
+                fontSize: '12px', 
+                mb: 1,
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all'
+              }}
+            >
+              {log}
+            </Typography>
+          ))}
+        </Box>
+      )}
     </AuthContext.Provider>
   );
 };
@@ -208,7 +309,7 @@ const LoginScreen = () => {
       }
 
       if (result.user) {
-        // Use the email as the username for now
+        // The auth state change listener will handle setting the user data
         login(result.user.email || 'User');
       }
     } catch (err) {
@@ -670,6 +771,17 @@ function App({
     sortBy: 'recent'
   });
   const [lastAnswer, setLastAnswer] = useState<string>('');
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+
+  // Add debug logs when user data changes
+  useEffect(() => {
+    if (user) {
+      setDebugLogs(prev => [...prev, `User logged in: ${user.email}`]);
+      setDebugLogs(prev => [...prev, `User progress: ${JSON.stringify(user.settings.progress)}`]);
+    } else {
+      setDebugLogs(prev => [...prev, 'No user logged in']);
+    }
+  }, [user]);
 
   // Use user's settings instead of separate state
   const [userSettings, setUserSettings] = useState<UserSettings>(() => {
@@ -849,6 +961,16 @@ function App({
 
     const today = new Date().toISOString().split('T')[0];
     
+    // Save individual question progress to Firestore
+    if (user) {
+      saveQuestionProgress(
+        user.id,
+        selectedLanguage,
+        currentPhrase.original, // Using the phrase as the question ID
+        correct ? 'success' : 'failed'
+      );
+    }
+    
     // Update progress with daily stats and failed phrases
     setUserSettings(prev => {
       const currentProgress = prev.progress[selectedLanguage];
@@ -893,7 +1015,7 @@ function App({
           )
         : [...dailyStats, { date: today, correct: correct ? 1 : 0, total: 1, level: selectedLevel }];
 
-      return {
+      const updatedProgress = {
         ...prev,
         progress: {
           ...prev.progress,
@@ -914,6 +1036,13 @@ function App({
           },
         },
       };
+
+      // Update progress in Firestore if user is logged in
+      if (user) {
+        updateUserProgress(user.id, updatedProgress.progress);
+      }
+
+      return updatedProgress;
     });
     
     setShowAnswer(true);
@@ -1871,8 +2000,60 @@ function App({
           width: '100vw',
           background: `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 100%)`,
           position: 'relative',
+          pt: '250px', // Add padding to prevent content from being hidden
         }}
       >
+        {/* Debug Panel */}
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '200px',
+            bgcolor: '#000',
+            color: '#fff',
+            zIndex: 9999,
+            p: 2,
+            borderBottom: '2px solid red',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              color: '#fff', 
+              mb: 2,
+              fontWeight: 'bold',
+              textAlign: 'center',
+              borderBottom: '1px solid #fff',
+              pb: 1,
+            }}
+          >
+            DEBUG PANEL
+          </Typography>
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
+            {debugLogs.map((log, index) => (
+              <Typography
+                key={index}
+                sx={{
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  mb: 1,
+                  borderLeft: '2px solid #fff',
+                  pl: 1,
+                }}
+              >
+                {log}
+              </Typography>
+            ))}
+          </Box>
+        </Box>
+
         <UserMenu />
         <Container maxWidth={false} sx={{ width: '100%', height: '100%', maxWidth: 'none', px: 4 }}>
           <Box sx={{ py: 6, width: '100%' }}>
