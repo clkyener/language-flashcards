@@ -202,7 +202,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     return () => unsubscribe();
   }, [auth, getUserData]);
 
-  const login = async (email: string) => {
+  const login = async () => {
     // This will be handled by the Firebase auth state change
   };
 
